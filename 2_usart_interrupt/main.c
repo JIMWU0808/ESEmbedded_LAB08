@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "reg.h"
+#include "blink.h"
 
 void init_usart1(void)
 {
@@ -50,7 +51,13 @@ void init_usart1(void)
 	SET_BIT(USART1_BASE + USART_CR1_OFFSET, TE_BIT);
     SET_BIT(USART1_BASE + USART_CR1_OFFSET, RE_BIT);
 
+	//USART RXNEIE enable
+	SET_BIT(USART1_BASE + USART_CR1_OFFSET, RXNEIE_BIT);
+
+	//nvic CONFIG
+	SET_BIT(NVIC_ISER_BASE + NVIC_ISERn_OFFSET(1), 5);
 }
+
 
 void usart1_send_char(const char ch)
 {
@@ -71,21 +78,34 @@ int main(void)
 	init_usart1();
 
 	char *hello = "Hello world!\r\n";
-
+	
 	//send Hello world
 	while (*hello != '\0')
 		usart1_send_char(*hello++);
-
-
+	blink(LED_BLUE);
+	
 	//receive char and resend it
-	char ch;
-	while (1)
+
+}
+void usart1_handler(void)
+{
+	
+	if (READ_BIT(USART1_BASE + USART_SR_OFFSET, ORE_BIT))
 	{
+		blink_count(LED_ORANGE,10);
+		WRITE_BITS( USART1_BASE + USART_DR_OFFSET,8,0,0);
+	}
+	else
+	{
+	char ch;
+	
 		ch = usart1_receive_char();
 
 		if (ch == '\r')
 			usart1_send_char('\n');
-
+blink_count(LED_ORANGE,2);
 		usart1_send_char(ch);
 	}
+	CLEAR_BIT( USART1_BASE + USART_SR_OFFSET ,RXNE_BIT);
+	
 }
